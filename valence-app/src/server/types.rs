@@ -98,6 +98,8 @@ pub struct SchemaMeta {
     pub owner: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Canonical Git repository URL for View source links.
+    pub repository: String,
 }
 
 /// Complete schema definition
@@ -191,12 +193,34 @@ pub struct TraitFieldInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitDetail {
     pub name: String,
+    /// Canonical Git repository URL for View source links.
+    pub repository: String,
     pub fields: Vec<TraitFieldInfo>,
     pub connections: Vec<SchemaConnection>,
     pub implementors: Vec<String>,
     /// Entity-level privacy policies declared by this trait.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub policies: Option<SchemaPrivacyCardData>,
+}
+
+/// One declared data-use row for schema / trait / Unscoped UI surfaces.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DataUseRow {
+    pub purpose: String,
+    pub file: String,
+    pub line: u32,
+    pub crate_name: String,
+    /// `read` | `create` | `update` | `delete` | `referenced_read` | `referenced_update`
+    pub op: String,
+    pub method: String,
+    /// When this row is shown on a schema page via trait fan-out.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub via_trait: Option<String>,
+    /// Initiating schema when this row is a Referenced Read/Update on the peer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_schema: Option<String>,
+    /// GitHub-style blob URL on the default branch.
+    pub source_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

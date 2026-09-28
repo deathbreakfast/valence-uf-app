@@ -81,9 +81,14 @@ async fn seed_user(id: &str, email_verified: bool, valence: &Valence) {
         now,
     )
     .expect("build user");
-    lepton::generated::User::upsert(id, user, valence)
-        .await
-        .expect("upsert user");
+    lepton::generated::User::upsert(
+        id,
+        user,
+        valence,
+        valence::use_!(r#"**Test:** Fixture **User** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
+    )
+    .await
+    .expect("upsert user");
 }
 
 async fn seed_super_user_with_member(system: &Valence, member_user_id: &str) {
@@ -94,15 +99,23 @@ async fn seed_super_user_with_member(system: &Valence, member_user_id: &str) {
         Utc::now(),
     )
     .expect("build super user group");
-    let created =
-        gauge::generated::PermissionGroup::upsert("super_user_group", super_group, system)
-            .await
-            .expect("upsert super user group");
+    let created = gauge::generated::PermissionGroup::upsert(
+        "super_user_group",
+        super_group,
+        system,
+        valence::use_!(r#"**Test:** Fixture **Permission Group** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
+    )
+    .await
+    .expect("upsert super user group");
 
-    let member = lepton::generated::User::get(member_user_id, system)
-        .await
-        .expect("query member")
-        .expect("member exists");
+    let member = lepton::generated::User::get(
+        member_user_id,
+        system,
+        valence::use_!(r#"**Test:** Fixture **User** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
+    )
+    .await
+    .expect("query member")
+    .expect("member exists");
     let principal = gauge::generated::PermissionUserPrincipal::upsert(
         &format!("user:{member_user_id}"),
         gauge::generated::PermissionUserPrincipal::new(
@@ -111,35 +124,62 @@ async fn seed_super_user_with_member(system: &Valence, member_user_id: &str) {
         )
         .expect("new principal"),
         system,
+        valence::use_!(r#"**Test:** Fixture **this data** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
     )
     .await
     .expect("upsert principal");
     created
-        .relate_to_owner_record(principal.id().expect("principal id"), system)
+        .relate_to_owner_record(
+            principal.id().expect("principal id"),
+            system,
+            valence::use_!(r#"**Test:** Fixture **owner edge** write in `e2e_valence` so the suite can arrange Gauge super-user membership. CI and developers running the suite only."#),
+        )
         .await
         .expect("relate super owner");
     created
-        .relate_to_member_record(principal.id().expect("principal id"), system)
+        .relate_to_member_record(
+            principal.id().expect("principal id"),
+            system,
+            valence::use_!(r#"**Test:** Fixture **member edge** write in `e2e_valence` so the suite can arrange Gauge super-user membership. CI and developers running the suite only."#),
+        )
         .await
         .expect("relate super member");
 }
 
 async fn demote_admin_from_super_user(system: &Valence) {
-    let Some(super_group) = gauge::generated::PermissionGroup::get("super_user_group", system)
-        .await
-        .expect("get super user group")
-    else {
+    let Some(super_group) = gauge::generated::PermissionGroup::get(
+        "super_user_group",
+        system,
+        valence::use_!(r#"**Test:** Fixture **Permission Group** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
+    )
+    .await
+    .expect("get super user group") else {
         return;
     };
-    let Some(principal) = gauge::generated::PermissionUserPrincipal::get("user:admin", system)
-        .await
-        .expect("get admin principal")
-    else {
+    let Some(principal) = gauge::generated::PermissionUserPrincipal::get(
+        "user:admin",
+        system,
+        valence::use_!(r#"**Test:** Fixture **Permission User Principal** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
+    )
+    .await
+    .expect("get admin principal") else {
         return;
     };
     let pid = principal.id().expect("principal id").clone();
-    let _ = super_group.unrelate_from_member_record(&pid, system).await;
-    let _ = super_group.unrelate_from_owner_record(&pid, system).await;
+    let _ = super_group
+        .unrelate_from_member_record(
+            &pid,
+            system,
+            valence::use_!(r#"**Test:** Fixture **member edge** remove in `e2e_valence` so the suite can demote a user from super-user after grants. CI and developers running the suite only."#),
+        )
+        .await;
+    let _ = super_group
+        .unrelate_from_owner_record(
+            &pid,
+            system,
+            valence::use_!(r#"**Test:** Fixture **owner edge** remove in `e2e_valence` so the suite can demote a user from super-user after grants. CI and developers running the suite only."#),
+        )
+        .await;
 }
 
 fn valence_admin_manifest() -> PermissionManifestInput {
@@ -196,9 +236,14 @@ async fn bootstrap_valence_fixtures(
         None,
     )
     .map_err(|e| anyhow::anyhow!("{e}"))?;
-    ValenceIterRun::upsert(&iter_run_id, row, system)
-        .await
-        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    ValenceIterRun::upsert(
+        &iter_run_id,
+        row,
+        system,
+        valence::use_!(r#"**Test:** Fixture **Valence Iter Run** access in `e2e_valence` so the suite can arrange and assert persistence. CI and developers running the suite only."#),
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     let actor_json = serde_json::to_value(Actor::User {
         user_id: "admin".into(),
