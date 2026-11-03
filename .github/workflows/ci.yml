@@ -108,10 +108,12 @@ jobs:
         run: cargo test -p valence-uf-app-e2e --features ssr --test runtime_contract --test probe_catalog
       - name: cargo test (valence-app ssr units)
         run: cargo test -p valence-app --features ssr
-      - name: cargo leptos end-to-end
+      - name: Playwright (parallel lanes)
         env:
           CI: true
-        run: cargo leptos end-to-end --project valence-uf-app-e2e
+          LANES: 4
+        working-directory: valence-uf-app-e2e/end2end
+        run: ./run-lanes.sh --no-install
       - name: Upload Playwright artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v6
@@ -120,6 +122,7 @@ jobs:
           path: |
             valence-uf-app-e2e/end2end/playwright-report/
             valence-uf-app-e2e/end2end/test-results/
+            valence-uf-app-e2e/end2end/lanes-out/
           if-no-files-found: ignore
 
   docs:
