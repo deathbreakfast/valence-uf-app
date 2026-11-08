@@ -113,15 +113,20 @@ pub fn DataUsesPanel(
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: var(--spacingVerticalM);
+            gap: var(--spacingVerticalXL);
         }
 
         .Row {
             display: flex;
             flex-direction: column;
-            gap: var(--spacingVerticalXS);
-            padding-bottom: var(--spacingVerticalM);
+            gap: var(--spacingVerticalS);
+            padding-bottom: var(--spacingVerticalL);
             border-bottom: 1px solid var(--colorNeutralStroke2);
+        }
+
+        .Row:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
         }
 
         .PurposeHtml {
@@ -132,6 +137,10 @@ pub fn DataUsesPanel(
 
         .PurposeHtml p {
             margin: 0 0 var(--spacingVerticalXS) 0;
+        }
+
+        .PurposeHtml p:last-child {
+            margin-bottom: 0;
         }
 
         .TabsScroll {
