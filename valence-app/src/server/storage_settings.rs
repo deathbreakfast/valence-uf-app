@@ -6,8 +6,8 @@
 //! members can read it, and only actors holding `ValenceAdmin` ([`VALENCE_ADMIN_GATE`]) can
 //! create or update it, whichever write path they reach it through. System may also update
 //! it so the deletion runner can clear `updated_by`. `save_storage_settings` checks
-//! `ValenceAdmin` too and writes under the admin's own session. It is separate from Meson's settings: a database disk and a file bucket are priced and
-//! copied differently.
+//! `ValenceAdmin` too and writes under the admin's own session. It is separate from Meson's
+//! settings: a database disk and a file bucket are priced and copied differently.
 
 use std::any::Any;
 
