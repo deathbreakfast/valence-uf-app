@@ -176,12 +176,22 @@ pub async fn get_site_storage() -> Result<SiteStorage, ServerFnError> {
 }
 
 /// The site's storage cost settings, or the defaults when none are saved.
+///
+/// `updated_by` is filled in for `ValenceAdmin` holders only.
 #[uf_product_macros::server]
 pub async fn get_storage_settings() -> Result<StorageSettings, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let v = super::helpers::viewer_valence().await?;
-        super::storage_settings::load_storage_settings(&v).await
+        let mut settings = super::storage_settings::load_storage_settings(&v).await?;
+        // Who last saved is for the admins' settings form; members only need the values.
+        let is_admin = gauge::service::actor_can(&v, valence_backend::VALENCE_ADMIN_PERMISSION)
+            .await
+            .map_err(|e| super::helpers::io_error(format!("ValenceAdmin check: {e}")))?;
+        if !is_admin {
+            settings.updated_by = None;
+        }
+        Ok(settings)
     }
     #[cfg(not(feature = "ssr"))]
     {

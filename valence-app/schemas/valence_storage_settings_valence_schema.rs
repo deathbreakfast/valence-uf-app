@@ -17,9 +17,9 @@ valence_schema! {
         // A site setting, not personal data: it never counts toward an owner's records.
         ownership: { system: true },
 
-        // Signed-in members read the settings (Your data shows cost with them). Writes come
-        // only from `save_storage_settings`, which checks ValenceAdmin before it runs under
-        // the admin's own session. System covers the deletion runner clearing `updated_by`.
+        // Signed-in members read the settings (Your data shows cost with them). Only
+        // ValenceAdmin holders create or update the row, on every write path; System may also
+        // update it so the deletion runner can clear `updated_by`.
         policies: {
             read: {
                 always_allow: [],
@@ -32,14 +32,14 @@ valence_schema! {
             },
             create: {
                 always_allow: [],
-                allow: [crate::server::storage_settings::SIGNED_IN_MEMBER],
+                allow: [crate::server::storage_settings::VALENCE_ADMIN_GATE],
                 block: [],
                 always_block: [],
             },
             update: {
                 always_allow: [],
                 allow: [
-                    crate::server::storage_settings::SIGNED_IN_MEMBER,
+                    crate::server::storage_settings::VALENCE_ADMIN_GATE,
                     ::valence::privacy_policies::common::SYSTEM_ONLY,
                 ],
                 block: [],

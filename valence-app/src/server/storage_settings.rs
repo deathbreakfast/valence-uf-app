@@ -2,16 +2,24 @@
 //!
 //! One row (id [`SETTINGS_ID`]) holds the copies kept and the price per GB each month. The
 //! schema lives in `schemas/valence_storage_settings_valence_schema.rs`; `build.rs` generates
-//! the typed model included below. Signed-in members can read it; the only write path is
-//! `save_storage_settings`, which requires ValenceAdmin and runs under the admin's session.
-//! It is separate from Meson's settings: a database disk and a file bucket are priced and
+//! the typed model included below. Its privacy policy enforces who may touch it: signed-in
+//! members can read it, and only actors holding `ValenceAdmin` ([`VALENCE_ADMIN_GATE`]) can
+//! create or update it, whichever write path they reach it through. System may also update
+//! it so the deletion runner can clear `updated_by`. `save_storage_settings` checks
+//! `ValenceAdmin` too and writes under the admin's own session. It is separate from Meson's settings: a database disk and a file bucket are priced and
 //! copied differently.
 
+use std::any::Any;
+
+use async_trait::async_trait;
 use chrono::Utc;
 use leptos::prelude::ServerFnError;
 use valence::privacy::PrivacyRule;
-use valence::{Model, RecordId, Valence};
+use valence::{
+    Actor, ActorContext, Error, Model, PolicyEvaluator, PrivacyOperation, RecordId, Valence,
+};
 use valence_backend::storage::{StorageSettings, DEFAULT_CURRENCY};
+use valence_backend::VALENCE_ADMIN_PERMISSION;
 
 /// Allows signed-in human users (not anonymous visitors or service users).
 pub(crate) const SIGNED_IN_MEMBER: PrivacyRule = PrivacyRule {
@@ -19,6 +27,48 @@ pub(crate) const SIGNED_IN_MEMBER: PrivacyRule = PrivacyRule {
     description: Some("Allow signed-in users"),
     check: |_record, viewer| viewer.is_user(),
 };
+
+/// Policy rule for [`ValenceAdminGate`].
+pub(crate) const VALENCE_ADMIN_GATE: ValenceAdminGate = ValenceAdminGate;
+
+/// Allows System and actors holding the `ValenceAdmin` Gauge permission.
+///
+/// Uses Gauge's raw walks, which are safe inside a policy evaluator; the typed `actor_can`
+/// re-enters ORM privacy and would recurse.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ValenceAdminGate;
+
+#[async_trait]
+impl PolicyEvaluator for ValenceAdminGate {
+    fn name(&self) -> &'static str {
+        "valence::VALENCE_ADMIN"
+    }
+
+    fn description(&self) -> Option<&'static str> {
+        Some("ValenceAdmin Gauge permission (raw walks)")
+    }
+
+    async fn evaluate(
+        &self,
+        _op: PrivacyOperation,
+        _record: &serde_json::Value,
+        actor: &dyn ActorContext,
+        v: &Valence,
+    ) -> valence::Result<bool> {
+        let viewer: Actor = serde_json::from_value(actor.actor_json().clone())
+            .map_err(|e| Error::Internal(format!("invalid actor context: {e}")))?;
+        if viewer.is_system() {
+            return Ok(true);
+        }
+        gauge::actor_can_raw::actor_can_raw(v, VALENCE_ADMIN_PERMISSION)
+            .await
+            .map_err(|e| Error::Privacy(format!("ValenceAdmin raw check failed: {e}")))
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
 
 mod generated {
     #![allow(
@@ -43,7 +93,7 @@ pub(crate) async fn load_storage_settings(v: &Valence) -> Result<StorageSettings
     let row = ValenceStorageSettings::get(
         SETTINGS_ID,
         v,
-        valence::use_!(r#"On the Valence **Storage** page, its cost settings form and the **Your data** storage card, we **load the site's storage cost settings**: how many copies of the database are kept and the price per GB each month. The page multiplies measured sizes by them to show a monthly cost to signed-in members, and the form shows who last changed them."#),
+        valence::use_!(r#"On the Valence **Storage** page, its cost settings form and the **Your data** storage card, we **load the site's storage cost settings**: how many copies of the database are kept and the price per GB each month. The page multiplies measured sizes by them to show a monthly cost to signed-in members, and the form shows a **ValenceAdmin** who last changed them."#),
     )
     .await
     .map_err(|e| super::helpers::io_error(format!("load storage settings: {e}")))?;
