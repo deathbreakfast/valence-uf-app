@@ -289,11 +289,17 @@ async fn seed_my_data_records(system: &Valence) -> anyhow::Result<()> {
         .iter()
         .map(|id| ("todo", *id))
         .chain(std::iter::once(("project", E2E_MY_PROJECT_ID)));
+    // Point the record's `owner` field at admin too, as a product write would.
+    let admin_ref = serde_json::to_value(valence::RecordId::new("user", "admin"))?;
     for (table, id) in rows {
         system
             .backend_for_table(table)
             .map_err(|e| anyhow::anyhow!("{e}"))?
-            .upsert_record(table, id, serde_json::json!({ "id": id }))
+            .upsert_record(
+                table,
+                id,
+                serde_json::json!({ "id": id, "owner": admin_ref }),
+            )
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         let owner = OwnerRef {

@@ -13,7 +13,7 @@ use valence_platform::deletion::run_service::DeletionService;
 use valence_platform::{ValenceIterRun, ValenceIterRunStatus};
 use valence_uf_app_e2e::{
     e2e_admin_valence, e2e_fixtures, e2e_outsider_valence, e2e_system_valence, init_e2e_valence,
-    E2E_ITER_NAME, E2E_SCHEMA_NAME,
+    E2E_ITER_NAME, E2E_MY_TODO_IDS, E2E_SCHEMA_NAME,
 };
 
 #[tokio::test]
@@ -219,4 +219,47 @@ async fn cancel_deletion_run_merge_happy_path() {
 async fn system_valence_builds_happy_path() {
     init_e2e_valence().await;
     let _ = e2e_system_valence();
+}
+
+/// Your data reads `todo` rows under admin's session and keeps those whose ownership
+/// row names admin; both halves must see the fixture rows.
+#[tokio::test]
+async fn admin_owned_todo_rows_visible_to_admin_happy_path() {
+    use valence::ownership::OwnershipService;
+    use valence::query::{QueryCore, SortDirection};
+
+    init_e2e_valence().await;
+    let admin = e2e_admin_valence();
+    let rows: Vec<serde_json::Value> = QueryCore::new("todo".to_string())
+        .order_by("id".to_string(), SortDirection::Desc)
+        .limit(100)
+        .execute(
+            &admin,
+            valence::use_!(r#"**Test:** Fixture **Todo** read in `runtime_contract` so the suite can assert the Your data scan sees owned rows. CI and developers running the suite only."#),
+        )
+        .await
+        .expect("query todo as admin");
+    let ids: Vec<String> = rows
+        .iter()
+        .map(|r| r.get("id").map(ToString::to_string).unwrap_or_default())
+        .collect();
+    for want in E2E_MY_TODO_IDS {
+        assert!(
+            ids.iter().any(|id| id.contains(want)),
+            "admin should read todo `{want}`; rows: {rows:?}"
+        );
+        let ownership = OwnershipService::get_ownership_json("todo", want, &admin)
+            .await
+            .expect("ownership lookup");
+        let owner = ownership
+            .as_ref()
+            .and_then(|o| o.get("owner_id"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        assert!(
+            owner.trim_start_matches("user:") == "admin",
+            "ownership for `{want}` should name admin; got {ownership:?}"
+        );
+    }
 }
