@@ -84,7 +84,8 @@ debug = false
 debug = 1
 
 [workspace.dependencies]
-valence-backend = { path = "valence-backend" }
+# Hosts opt into the Spectra storage tables with the `spectra` feature (valence-app does under ssr).
+valence-backend = { path = "valence-backend", default-features = false }
 leptos = { version = "0.8.20", default-features = false, features = ["nightly"] }
 leptos_meta = { version = "0.8", default-features = false }
 leptos_router = { version = "0.8", default-features = false, features = ["nightly"] }
@@ -116,6 +117,7 @@ js-sys = "0.3"
 web-sys = { version = "0.3", features = ["Blob", "BlobPropertyBag", "HtmlAnchorElement", "Url", "Window", "Document"] }
 
 valence = { package = "uf-valence", git = "https://github.com/unified-field-dev/valence", branch = "main", default-features = false, features = ["mem", "sqlite"] }
+valence-codegen = { package = "uf-valence-codegen", git = "https://github.com/unified-field-dev/valence", branch = "main" }
 valence-data-use-scan = { package = "uf-valence-data-use-scan", git = "https://github.com/unified-field-dev/valence", branch = "main" }
 higgs = { git = "https://github.com/unified-field-dev/higgs", branch = "main", default-features = false }
 higgs-identity = { git = "https://github.com/unified-field-dev/higgs", branch = "main" }

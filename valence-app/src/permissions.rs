@@ -14,9 +14,10 @@ use uf_product_macros::UfPermissionManifest;
     domain_description = "Valence schema and operations administration"
 )]
 pub enum ValencePermission {
-    /// Cancel iter/deletion runs, queue deletes, and dispatch iters
+    /// Cancel iter/deletion runs, queue deletes, dispatch iters, and set storage costs
     /// (`start_iter_run`, `run_iter_on_entity`, `cancel_iter_run`,
-    /// `delete_entity_queue`, `cancel_deletion_run`).
+    /// `delete_entity_queue`, `cancel_deletion_run`, `save_storage_settings`), and read
+    /// the site-wide Storage page (`get_site_storage`).
     #[permission(description = "Administer Valence iter, deletion, and entity mutations")]
     ValenceAdmin,
 }

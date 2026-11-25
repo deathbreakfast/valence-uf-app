@@ -52,6 +52,9 @@ higgs = { workspace = true, optional = true }
 valence-platform = { workspace = true, optional = true }
 gauge = { workspace = true, optional = true }
 spectra = { workspace = true, optional = true }
+# Typed `User` target for the storage settings `updated_by` connection (generated model).
+lepton = { workspace = true, optional = true }
+async-trait = { workspace = true, optional = true }
 
 leptos-use = { workspace = true, default-features = false, features = ["use_interval_fn"] }
 inventory = { workspace = true, optional = true }
@@ -89,6 +92,10 @@ ssr = [
     "leptos-use/ssr",
     "dep:valence",
     "valence/sqlite",
+    "valence-backend/spectra",
+    "dep:lepton",
+    "lepton/ssr",
+    "dep:async-trait",
     "dep:higgs",
     "higgs/ssr",
     "dep:valence-platform",
@@ -103,3 +110,10 @@ ssr = [
     "uf-help/ssr",
     "dep:tracing",
 ]
+
+[build-dependencies]
+# Typed model for the `valence_storage_settings` schema in `schemas/`.
+valence-codegen = { workspace = true }
+
+[dev-dependencies]
+valence-data-use-scan = { workspace = true }

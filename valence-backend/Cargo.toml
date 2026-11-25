@@ -18,3 +18,14 @@ orbital-data = { workspace = true }
 orbital-paging = { workspace = true, default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
+# Spectra storage tables and their reader (server only; kept out of the wasm graph).
+spectra = { workspace = true, optional = true }
+spectra-core = { workspace = true, optional = true }
+
+[features]
+default = ["spectra"]
+spectra = ["dep:spectra", "dep:spectra-core"]
+
+[dev-dependencies]
+tokio = { workspace = true }

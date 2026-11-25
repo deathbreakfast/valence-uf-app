@@ -20,6 +20,9 @@
 //!   [`valence_iter_run_path`], [`valence_deletion_run_path`], and [`valence_trait_path`].
 //! - **Owner contact redaction** — Builds operator-safe contact display from user rows via
 //!   [`owner_contact_from_user_record`].
+//! - **Storage snapshot** — Declares the daily Spectra storage tables, reads their newest run,
+//!   and builds the Storage and Your data page state with a named fallback for every input.
+//!   Row contract and fallbacks: [`storage`].
 //!
 //! ## Validate path and ids
 //!
@@ -106,7 +109,8 @@
 //! ## Admin permission names
 //!
 //! Mutating Valence ops (start/cancel iter runs, queue entity deletion, cancel deletion
-//! runs) require the `ValenceAdmin` Gauge permission. [`VALENCE_ADMIN_PERMISSION`] is the
+//! runs, save storage settings) require the `ValenceAdmin` Gauge permission, as do the
+//! site-wide reads in [`VALENCE_ADMIN_READ_SERVER_FNS`]. [`VALENCE_ADMIN_PERMISSION`] is the
 //! canonical permission string; [`VALENCE_ADMIN_SERVER_FNS`] lists server function names that
 //! must carry `#[uf_product_macros::server(permission = "ValenceAdmin")]`.
 //! [`is_valence_admin_server_fn`] answers manifest and codegen checks for a given name.
@@ -122,10 +126,10 @@
 //! assert_eq!(VALENCE_ADMIN_PERMISSION, "ValenceAdmin");
 //! assert!(is_valence_admin_server_fn("delete_entity_queue"));
 //! assert!(!is_valence_admin_server_fn("get_schemas"));
-//! assert_eq!(VALENCE_ADMIN_SERVER_FNS.len(), 5);
+//! assert_eq!(VALENCE_ADMIN_SERVER_FNS.len(), 6);
 //! ```
 //!
-//! On success `is_valence_admin_server_fn` returns `true` only for the five mutating admin
+//! On success `is_valence_admin_server_fn` returns `true` only for the six mutating admin
 //! server functions; all other names are treated as viewer-accessible reads.
 //!
 //! ## Examples
@@ -142,11 +146,13 @@ mod lookup;
 mod map;
 mod owner_contact;
 mod page_query;
+pub mod storage;
 mod types;
 mod validate;
 
 pub use admin_permission::{
-    is_valence_admin_server_fn, VALENCE_ADMIN_PERMISSION, VALENCE_ADMIN_SERVER_FNS,
+    is_valence_admin_server_fn, VALENCE_ADMIN_PERMISSION, VALENCE_ADMIN_READ_SERVER_FNS,
+    VALENCE_ADMIN_SERVER_FNS,
 };
 pub use entity_id::{extract_id_from_record_display, normalize_entity_id_for_lookup};
 pub use lookup::{

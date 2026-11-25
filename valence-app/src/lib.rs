@@ -314,6 +314,26 @@
 //! Next: Help spotlights for schema / trait / Unscoped Data uses. Source links on
 //! referenced rows match Connections graph peer naming.
 //!
+//! ## Storage size and cost
+//!
+//! A daily Chronon job (written by the host) measures the database into two Spectra tables,
+//! re-exported here under `ssr` ([`ValenceStorageSchemaDaily`], [`ValenceStorageOwnerDaily`])
+//! so the job can write rows against the contract in [`valence_backend::storage`].
+//! [`get_my_storage`] returns the signed-in member's share, [`get_site_storage`] the whole
+//! database with history and the biggest owners (ValenceAdmin), and
+//! [`get_storage_settings`] / [`save_storage_settings`] read and write the copies kept and
+//! the price per GB each month (saving needs ValenceAdmin). Before the first run, or
+//! without Spectra, the views say `NotMeasured` and carry live row counts with no sizes.
+//!
+//! ```rust,ignore
+//! use valence_app::{get_my_storage, SizeState};
+//!
+//! let mine = get_my_storage().await?;
+//! if mine.size == SizeState::NotMeasured {
+//!     // Rows are counted live; sizes stay blank until the first run.
+//! }
+//! ```
+//!
 //! ## Feature flags
 //!
 //! | Flag | Effect |
@@ -408,14 +428,27 @@ pub use pages::{
 pub use server::{
     cancel_deletion_run, cancel_iter_run, delete_entity_queue, get_dashboard_my_data_stats,
     get_deletion_run, get_entity_ownership_transfers, get_entity_privacy_evaluation,
-    get_entity_view, get_iter_run, get_schema, get_schema_data_uses, get_schema_iters,
-    get_schema_privacy_policies, get_schema_samples, get_schemas, get_schemas_page, get_trait,
-    get_trait_data_uses, get_traits, get_traits_page, get_unscoped_data_uses,
-    list_deletion_run_steps, list_deletion_runs, list_iter_run_batches, list_iter_run_errors,
-    list_iter_runs, run_iter_on_entity, search_schema_or_id, DashboardMyDataStats, DataUseRow,
-    DeletionRunView, EntityView, ForeignKeyRef, IterRunSummary, Schema, SchemaEdge, SchemaField,
-    SchemaListItem, SchemaMeta, SchemaPrivacy, TraitDetail, TraitFieldInfo, TraitListItem,
-    DATA_USE_CATALOG_NOT_INSTALLED, VALENCE_ADMIN_PERMISSION,
+    get_entity_view, get_iter_run, get_my_storage, get_schema, get_schema_data_uses,
+    get_schema_iters, get_schema_privacy_policies, get_schema_samples, get_schemas,
+    get_schemas_page, get_site_storage, get_storage_settings, get_trait, get_trait_data_uses,
+    get_traits, get_traits_page, get_unscoped_data_uses, list_deletion_run_steps,
+    list_deletion_runs, list_iter_run_batches, list_iter_run_errors, list_iter_runs,
+    run_iter_on_entity, save_storage_settings, search_schema_or_id, DashboardMyDataStats,
+    DataUseRow, DeletionRunView, EntityView, ForeignKeyRef, IterRunSummary, Schema, SchemaEdge,
+    SchemaField, SchemaListItem, SchemaMeta, SchemaPrivacy, TraitDetail, TraitFieldInfo,
+    TraitListItem, DATA_USE_CATALOG_NOT_INSTALLED, VALENCE_ADMIN_PERMISSION,
+};
+pub use server::{
+    CopiesSource, HistoryPoint, HistoryState, MeasureHow, MyStorageView, OwnerTotal, PriceState,
+    SchemaRow, SiteStorage, SizeState, StorageSettings, StorageTotals, ValenceStorageView,
+};
+/// Spectra schemas for the daily storage tables, so a host's Chronon job can write rows.
+/// The row contract is documented on [`valence_backend::storage`].
+#[cfg(feature = "ssr")]
+pub use valence_backend::storage::{
+    ValenceStorageOwnerDaily, ValenceStorageOwnerDailyLogger, ValenceStorageOwnerDailyPayload,
+    ValenceStorageSchemaDaily, ValenceStorageSchemaDailyLogger, ValenceStorageSchemaDailyPayload,
+    VALENCE_STORAGE_OWNER_DAILY, VALENCE_STORAGE_SCHEMA_DAILY,
 };
 
 // Define the Valence application metadata.

@@ -6233,6 +6233,7 @@ dependencies = [
 name = "valence-app"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "gauge",
  "higgs",
@@ -6240,6 +6241,7 @@ dependencies = [
  "icondata_core",
  "inventory",
  "js-sys",
+ "lepton",
  "lepton-shell",
  "leptos",
  "leptos-use",
@@ -6268,6 +6270,8 @@ dependencies = [
  "uf-spectra",
  "uf-spectra-core",
  "uf-valence",
+ "uf-valence-codegen",
+ "uf-valence-data-use-scan",
  "urlencoding",
  "uuid",
  "valence-backend",
@@ -6280,10 +6284,14 @@ dependencies = [
 name = "valence-backend"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "orbital-data",
  "orbital-paging",
  "serde",
  "serde_json",
+ "tokio",
+ "uf-spectra",
+ "uf-spectra-core",
 ]
 
 [[package]]

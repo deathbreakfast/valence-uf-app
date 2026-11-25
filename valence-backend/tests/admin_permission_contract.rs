@@ -9,7 +9,8 @@
 use std::path::PathBuf;
 
 use valence_backend::{
-    is_valence_admin_server_fn, VALENCE_ADMIN_PERMISSION, VALENCE_ADMIN_SERVER_FNS,
+    is_valence_admin_server_fn, VALENCE_ADMIN_PERMISSION, VALENCE_ADMIN_READ_SERVER_FNS,
+    VALENCE_ADMIN_SERVER_FNS,
 };
 
 fn valence_app_server_rs() -> String {
@@ -40,13 +41,14 @@ fn valence_admin_permission_name_happy_path() {
 
 #[test]
 fn valence_admin_server_fns_lists_all_mutators_happy_path() {
-    assert_eq!(VALENCE_ADMIN_SERVER_FNS.len(), 5);
+    assert_eq!(VALENCE_ADMIN_SERVER_FNS.len(), 6);
     for name in [
         "start_iter_run",
         "run_iter_on_entity",
         "cancel_iter_run",
         "delete_entity_queue",
         "cancel_deletion_run",
+        "save_storage_settings",
     ] {
         assert!(
             is_valence_admin_server_fn(name),
@@ -55,20 +57,25 @@ fn valence_admin_server_fns_lists_all_mutators_happy_path() {
     }
 }
 
+/// The `#[uf_product_macros::server(...)]` line nearest above `fn {name}(`.
+fn server_macro_line(src: &str, name: &str) -> String {
+    let needle = format!("fn {name}(");
+    let idx = src
+        .find(&needle)
+        .unwrap_or_else(|| panic!("missing server fn {name}"));
+    src[..idx]
+        .lines()
+        .rev()
+        .find(|line| line.contains("#[uf_product_macros::server"))
+        .unwrap_or_else(|| panic!("no server macro above {name}"))
+        .to_string()
+}
+
 #[test]
 fn server_rs_mutators_carry_valence_admin_macro_happy_path() {
     let src = valence_app_server_rs();
     for name in VALENCE_ADMIN_SERVER_FNS {
-        let needle = format!("fn {name}(");
-        let idx = src
-            .find(&needle)
-            .unwrap_or_else(|| panic!("missing server fn {name}"));
-        let prefix = &src[..idx];
-        let macro_line = prefix
-            .lines()
-            .rev()
-            .find(|line| line.contains("#[uf_product_macros::server"))
-            .unwrap_or_else(|| panic!("no server macro above {name}"));
+        let macro_line = server_macro_line(&src, name);
         assert!(
             macro_line.contains(r#"permission = "ValenceAdmin""#),
             "{name} must use ValenceAdmin macro; got: {macro_line}"
@@ -76,22 +83,42 @@ fn server_rs_mutators_carry_valence_admin_macro_happy_path() {
     }
 }
 
+/// The macro's permission check is what answers a non-admin with a `permission` error, so
+/// every site-wide storage fn must carry it.
+#[test]
+fn server_rs_site_storage_reads_carry_valence_admin_macro_happy_path() {
+    assert_eq!(VALENCE_ADMIN_READ_SERVER_FNS, ["get_site_storage"]);
+    let src = valence_app_server_rs();
+    for name in VALENCE_ADMIN_READ_SERVER_FNS {
+        let macro_line = server_macro_line(&src, name);
+        assert!(
+            macro_line.contains(r#"permission = "ValenceAdmin""#),
+            "{name} must use ValenceAdmin macro so non-admins get a permission error; got: {macro_line}"
+        );
+    }
+}
+
 #[test]
 fn server_rs_entity_view_stays_ungated_happy_path() {
     let src = valence_app_server_rs();
-    let idx = src
-        .find("pub async fn get_entity_view")
-        .expect("get_entity_view");
-    let prefix = &src[..idx];
-    let macro_line = prefix
-        .lines()
-        .rev()
-        .find(|line| line.contains("#[uf_product_macros::server"))
-        .expect("server macro");
+    let macro_line = server_macro_line(&src, "get_entity_view");
     assert!(
         !macro_line.contains("permission"),
         "entity view must stay loadable without ValenceAdmin: {macro_line}"
     );
+}
+
+#[test]
+fn server_rs_member_storage_reads_stay_ungated_happy_path() {
+    let src = valence_app_server_rs();
+    for name in ["get_my_storage", "get_storage_settings"] {
+        let macro_line = server_macro_line(&src, name);
+        assert!(
+            !macro_line.contains("permission"),
+            "{name} must stay open to signed-in members: {macro_line}"
+        );
+        assert!(!is_valence_admin_server_fn(name));
+    }
 }
 
 #[test]
