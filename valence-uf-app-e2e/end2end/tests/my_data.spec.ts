@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { test, expect, seedAuth, waitForHydrated, expandShellNav } from "./fixtures";
 
 // Fixture records `admin` owns (valence-uf-app-e2e/src/e2e_valence.rs).
-const MY_TODO_IDS = ["e2e-my-todo-1", "e2e-my-todo-2"];
-const MY_PROJECT_ID = "e2e-my-project-1";
+const MY_NOTE_IDS = ["e2e-my-note-1", "e2e-my-note-2"];
+const MY_BOOKMARK_ID = "e2e-my-bookmark-1";
 
 test.use({ timezoneId: "UTC" });
 
@@ -26,22 +26,22 @@ test.describe("pw-valence-my-data", () => {
     await page.goto("/valence/me", { waitUntil: "domcontentloaded" });
     await waitForHydrated(page);
 
-    const todo = page.getByTestId("my-data-schema-todo");
-    await expect(todo).toBeVisible({ timeout: 60_000 });
-    await expect(todo.getByText("todo · 2")).toBeVisible();
-    await expect(todo.getByTestId("my-data-why-kept")).toContainText("Why it's kept");
-    await expect(todo.getByTestId("my-data-why-kept")).not.toContainText("**");
-    await expect(todo.getByTestId("my-data-retention")).not.toBeEmpty();
-    for (const id of MY_TODO_IDS) {
-      await expect(todo.getByRole("link", { name: id })).toHaveAttribute(
-        "href",
-        `/valence/schema/todo/id/${id}`,
-      );
+    const notes = page.getByTestId("my-data-schema-e2e_note");
+    await expect(notes).toBeVisible({ timeout: 60_000 });
+    await expect(notes.getByText("e2e_note · 2")).toBeVisible();
+    await expect(notes.getByTestId("my-data-why-kept")).toContainText("Why it's kept");
+    await expect(notes.getByTestId("my-data-why-kept")).not.toContainText("**");
+    await expect(notes.getByTestId("my-data-retention")).not.toBeEmpty();
+    await expect(notes.getByRole("link", { name: "Order name badges" })).toBeVisible();
+    for (const id of MY_NOTE_IDS) {
+      await expect(notes.locator(`a[href="/valence/schema/e2e_note/id/${id}"]`)).toHaveCount(1);
     }
 
-    const project = page.getByTestId("my-data-schema-project");
-    await expect(project.getByText("project · 1")).toBeVisible();
-    await expect(project.getByRole("link", { name: MY_PROJECT_ID })).toBeVisible();
+    const bookmarks = page.getByTestId("my-data-schema-e2e_bookmark");
+    await expect(bookmarks.getByText("e2e_bookmark · 1")).toBeVisible();
+    await expect(
+      bookmarks.locator(`a[href="/valence/schema/e2e_bookmark/id/${MY_BOOKMARK_ID}"]`),
+    ).toHaveCount(1);
 
     await expect(page.getByTestId("my-data-stats")).toContainText("Records you own");
     await expect(page.getByTestId("my-data-account")).toContainText("Deleting your account");
@@ -55,7 +55,7 @@ test.describe("pw-valence-my-data", () => {
     await seedAuth(page, "admin");
     await page.goto("/valence/me", { waitUntil: "domcontentloaded" });
     await waitForHydrated(page);
-    await expect(page.getByTestId("my-data-schema-todo")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("my-data-schema-e2e_note")).toBeVisible({ timeout: 60_000 });
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByTestId("my-data-download").getByRole("button").click();
@@ -67,11 +67,11 @@ test.describe("pw-valence-my-data", () => {
       schemas: Record<string, Array<{ id: unknown }>>;
     };
     expect(doc.user).toContain("admin");
-    const todoIds = (doc.schemas.todo ?? []).map((r) => JSON.stringify(r.id));
-    for (const id of MY_TODO_IDS) {
-      expect(todoIds.some((t) => t.includes(id))).toBeTruthy();
+    const noteIds = (doc.schemas.e2e_note ?? []).map((r) => JSON.stringify(r.id));
+    for (const id of MY_NOTE_IDS) {
+      expect(noteIds.some((t) => t.includes(id))).toBeTruthy();
     }
-    expect(JSON.stringify(doc.schemas.project ?? [])).toContain(MY_PROJECT_ID);
+    expect(JSON.stringify(doc.schemas.e2e_bookmark ?? [])).toContain(MY_BOOKMARK_ID);
     // The outsider's user row is never in admin's copy.
     expect(JSON.stringify(doc)).not.toContain("outsider");
   });
@@ -105,7 +105,7 @@ test.describe("pw-valence-my-data", () => {
     const error = page.getByTestId("my-data-error");
     await expect(error).toBeVisible({ timeout: 60_000 });
     await error.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByTestId("my-data-schema-todo")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("my-data-schema-e2e_note")).toBeVisible({ timeout: 60_000 });
   });
 
   test("pw-my-data-mobile-390", async ({ page }) => {
@@ -113,9 +113,9 @@ test.describe("pw-valence-my-data", () => {
     await seedAuth(page, "admin");
     await page.goto("/valence/me", { waitUntil: "domcontentloaded" });
     await waitForHydrated(page);
-    const todo = page.getByTestId("my-data-schema-todo");
-    await expect(todo.getByTestId("my-data-records-list")).toBeVisible({ timeout: 60_000 });
-    await expect(todo.getByTestId("my-data-records-table")).toHaveCount(0);
+    const notes = page.getByTestId("my-data-schema-e2e_note");
+    await expect(notes.getByTestId("my-data-records-list")).toBeVisible({ timeout: 60_000 });
+    await expect(notes.getByTestId("my-data-records-table")).toHaveCount(0);
     const stats = page.getByTestId("my-data-stats");
     const width = await stats.evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
     expect(width).toBeTruthy();

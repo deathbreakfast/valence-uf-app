@@ -45,10 +45,10 @@ pub const E2E_SCHEMA_NAME: &str = "user";
 pub const E2E_ENTITY_ID: &str = "admin";
 pub const E2E_TRAIT_NAME: &str = "HasOwner";
 pub const E2E_ITER_NAME: &str = "e2e_lab_iter";
-/// Todo records owned by `admin` for the Your data page.
-pub const E2E_MY_TODO_IDS: [&str; 2] = ["e2e-my-todo-1", "e2e-my-todo-2"];
-/// Project record owned by `admin` for the Your data page.
-pub const E2E_MY_PROJECT_ID: &str = "e2e-my-project-1";
+/// `e2e_note` records owned by `admin` for the Your data page.
+pub const E2E_MY_NOTE_IDS: [&str; 2] = ["e2e-my-note-1", "e2e-my-note-2"];
+/// `e2e_bookmark` record owned by `admin` for the Your data page.
+pub const E2E_MY_BOOKMARK_ID: &str = "e2e-my-bookmark-1";
 
 struct HiggsFactory(RouterValenceFactory);
 
@@ -278,27 +278,30 @@ async fn bootstrap_valence_fixtures(
 
 /// Records `admin` owns, so Your data has something to list.
 ///
-/// The hop schemas only accept service writes, so the rows go straight to the table
-/// backend and ownership is then pointed at `admin` (fixture arrangement, not a
-/// request path).
+/// The rows go straight to the table backend (fixture arrangement, not a request
+/// path); `user` satisfies the schemas' owner read rule and the ownership row makes
+/// them count as admin's.
 async fn seed_my_data_records(system: &Valence) -> anyhow::Result<()> {
     use valence::owner_ref::{OwnerKind, OwnerRef};
     use valence::ownership::OwnershipService;
 
-    let rows = E2E_MY_TODO_IDS
-        .iter()
-        .map(|id| ("todo", *id))
-        .chain(std::iter::once(("project", E2E_MY_PROJECT_ID)));
-    // Point the record's `owner` field at admin too, as a product write would.
-    let admin_ref = serde_json::to_value(valence::RecordId::new("user", "admin"))?;
-    for (table, id) in rows {
+    let rows = [
+        (
+            "e2e_note",
+            E2E_MY_NOTE_IDS[0],
+            "Book the venue for the June meetup",
+        ),
+        ("e2e_note", E2E_MY_NOTE_IDS[1], "Order name badges"),
+        ("e2e_bookmark", E2E_MY_BOOKMARK_ID, "Speaker list"),
+    ];
+    for (table, id, title) in rows {
         system
             .backend_for_table(table)
             .map_err(|e| anyhow::anyhow!("{e}"))?
             .upsert_record(
                 table,
                 id,
-                serde_json::json!({ "id": id, "owner": admin_ref }),
+                serde_json::json!({ "id": id, "user": "admin", "title": title }),
             )
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
