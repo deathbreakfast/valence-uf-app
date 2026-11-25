@@ -10,7 +10,8 @@
 //! - schema/entity detail payload assembly for pages,
 //! - privacy card/evaluation payload generation,
 //! - schema-or-id search and route redirection helpers,
-//! - dashboard My Data and platform metric cards.
+//! - dashboard My Data and platform metric cards,
+//! - storage size and cost for Your data and the Storage page, plus the cost settings.
 //!
 //! ## Security map
 //!
@@ -48,6 +49,7 @@ mod deletions;
 mod entities;
 mod iters;
 mod schemas;
+mod storage;
 mod traits;
 mod types;
 
@@ -61,6 +63,8 @@ mod helpers;
 mod privacy;
 #[cfg(feature = "ssr")]
 mod registry;
+#[cfg(feature = "ssr")]
+mod storage_settings;
 
 // --- Ship surface (matches crate-root re-exports in `lib.rs`) -----------------
 
@@ -84,10 +88,15 @@ pub use schemas::{
     get_schema, get_schema_privacy_policies, get_schema_samples, get_schemas, get_schemas_page,
     search_schema_or_id,
 };
+pub use storage::{get_my_storage, get_site_storage, get_storage_settings, save_storage_settings};
 pub use traits::{get_trait, get_traits, get_traits_page};
 pub use types::{
     DataUseRow, EntityView, ForeignKeyRef, Schema, SchemaEdge, SchemaField, SchemaMeta,
     SchemaPrivacy, TraitDetail, TraitFieldInfo,
+};
+pub use valence_backend::storage::{
+    CopiesSource, HistoryPoint, HistoryState, MeasureHow, MyStorageView, OwnerTotal, PriceState,
+    SchemaRow, SiteStorage, SizeState, StorageSettings, StorageTotals, ValenceStorageView,
 };
 pub use valence_backend::{
     DeletionRunView, IterRunSummary, SchemaListItem, TraitListItem, VALENCE_ADMIN_PERMISSION,

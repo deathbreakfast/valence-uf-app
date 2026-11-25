@@ -2,7 +2,8 @@
 //!
 //! Browse/read endpoints (schema/trait registry, entity view, privacy eval,
 //! iter/deletion run detail) stay open under viewer Valence (VU-01). Only
-//! mutating admin ops listed here require `ValenceAdmin` + session.
+//! mutating admin ops listed here require `ValenceAdmin` + session, plus the
+//! site-wide reads in [`VALENCE_ADMIN_READ_SERVER_FNS`].
 
 /// Gauge permission name synced with `valence-app`'s `ValencePermission` manifest.
 pub const VALENCE_ADMIN_PERMISSION: &str = "ValenceAdmin";
@@ -15,7 +16,14 @@ pub const VALENCE_ADMIN_SERVER_FNS: &[&str] = &[
     "cancel_iter_run",
     "delete_entity_queue",
     "cancel_deletion_run",
+    "save_storage_settings",
 ];
+
+/// Read-only server function names that also require `ValenceAdmin`.
+///
+/// They carry `#[uf_product_macros::server(permission = "ValenceAdmin")]` because they show
+/// the whole site (every schema's size and the biggest owners), not the viewer's own data.
+pub const VALENCE_ADMIN_READ_SERVER_FNS: &[&str] = &["get_site_storage"];
 
 /// Returns whether `name` is a Valence mutating admin server function.
 pub fn is_valence_admin_server_fn(name: &str) -> bool {
