@@ -9,9 +9,15 @@ use turf::inline_style_sheet_values;
 
 use crate::server::{SearchOutcome, SearchSchemaOrId};
 
+/// `true` when the search failed for lack of a session: the server writes those
+/// with the stable `auth:` kind prefix.
+fn is_auth_error(err: &ServerFnError) -> bool {
+    matches!(err, ServerFnError::ServerError(m) if m.trim_start().starts_with("auth:"))
+}
+
 /// What to tell the operator when the search itself failed.
 fn search_error_message(err: &ServerFnError) -> &'static str {
-    if err.to_string().contains("auth:") {
+    if is_auth_error(err) {
         "Your session has ended. Sign in again, then search."
     } else {
         "Valence didn't answer the search. Try again in a moment."
@@ -79,7 +85,7 @@ pub fn DashboardSearchHeader() -> impl IntoView {
                                 "No schema has that name and no record has that id. Check the id, or search Deletions if it may have been removed."
                             </MessageBarBody>
                             <MessageBarActions>
-                                <A href="/valence/deletions">
+                                <A href=crate::paths::DELETIONS>
                                     <Button appearance=ButtonAppearance::Secondary>"Search Deletions"</Button>
                                 </A>
                             </MessageBarActions>
@@ -97,5 +103,21 @@ pub fn DashboardSearchHeader() -> impl IntoView {
                 _ => ().into_any(),
             }}
         </div>
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_auth_error;
+    use leptos::prelude::ServerFnError;
+
+    #[test]
+    fn auth_prefix_only_counts_at_the_start() {
+        assert!(is_auth_error(&ServerFnError::new(
+            "auth: Authentication required"
+        )));
+        assert!(!is_auth_error(&ServerFnError::new(
+            "io: upstream said auth: token rejected"
+        )));
     }
 }

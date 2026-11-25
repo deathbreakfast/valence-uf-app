@@ -166,6 +166,7 @@ fn MyDataSchemaCard(schema: MyDataSchema) -> impl IntoView {
         count,
         being_deleted,
         why_kept,
+        why_kept_failed,
         retention,
         newest,
         more,
@@ -200,7 +201,13 @@ fn MyDataSchemaCard(schema: MyDataSchema) -> impl IntoView {
                         <div data-testid="my-data-why-kept">
                             <Flex vertical=true gap=FlexGap::Small>
                                 <Caption1>"Why it's kept"</Caption1>
-                                {if why_kept.is_empty() {
+                                {if why_kept_failed {
+                                    view! {
+                                        <span data-testid="my-data-why-kept-failed">
+                                            <Body1>"Valence couldn't load the reasons this site declared. Try again later."</Body1>
+                                        </span>
+                                    }.into_any()
+                                } else if why_kept.is_empty() {
                                     view! { <Body1>"This site hasn't declared why it reads these records."</Body1> }.into_any()
                                 } else {
                                     why_kept

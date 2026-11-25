@@ -21,6 +21,13 @@ pub(crate) const MY_DATA_NEWEST: usize = 3;
 /// Caption shown when a schema declares no retention.
 pub(crate) const DEFAULT_RETENTION: &str = "Kept until you delete them or close your account";
 
+/// Most readable rows one scan reads per schema before it stops and reports the
+/// result as cut short.
+///
+/// The owner summary also counts records the member can't read, so a scan that
+/// never reaches that count would otherwise walk the whole table.
+pub(crate) const MAX_SCAN_ROWS: usize = 5_000;
+
 /// Fields tried, in order, for a record's display label before falling back to its id.
 const LABEL_FIELDS: &[&str] = &["title", "name", "label", "subject", "email"];
 
@@ -51,6 +58,9 @@ pub struct MyDataSchema {
     pub being_deleted: u64,
     /// Read purposes declared for this schema, as plain sentences.
     pub why_kept: Vec<String>,
+    /// `true` when the data-use catalog lookup failed, so `why_kept` is unknown
+    /// rather than empty.
+    pub why_kept_failed: bool,
     /// Retention caption.
     pub retention: String,
     /// Newest few records the member can read.
@@ -166,8 +176,18 @@ fn newest_first_field(schema_name: &str) -> String {
         .unwrap_or_else(|| "id".to_string())
 }
 
+/// Owned rows a scan found, and whether it stopped at [`MAX_SCAN_ROWS`] first.
+#[cfg(feature = "ssr")]
+struct ScanResult {
+    rows: Vec<serde_json::Value>,
+    cut_short: bool,
+}
+
 /// Pages `table` newest first under the session `v` and keeps rows whose ownership
-/// row names `user_id`, stopping after `want` matches or when the table ends.
+/// row names `user_id`, stopping after `want` matches, when the table ends, or after
+/// [`MAX_SCAN_ROWS`] readable rows.
+///
+/// Each row costs one ownership lookup until Valence ships an owner listing query.
 ///
 /// Rows the member can't read never come back from the query, so this can't reveal
 /// anything their session couldn't already open.
@@ -178,14 +198,18 @@ async fn scan_owned(
     user_id: &str,
     want: usize,
     purpose: valence::data_use::DataUsePurpose,
-) -> Result<Vec<serde_json::Value>, ServerFnError> {
+) -> Result<ScanResult, ServerFnError> {
     use valence::query::{QueryCore, SortDirection};
 
     const PAGE: u32 = 100;
     let mut out = Vec::new();
     if want == 0 {
-        return Ok(out);
+        return Ok(ScanResult {
+            rows: out,
+            cut_short: false,
+        });
     }
+    let mut scanned = 0usize;
     let order_field = newest_first_field(table);
     let mut resume: Option<u32> = None;
     loop {
@@ -200,6 +224,13 @@ async fn scan_owned(
             .await
             .map_err(|e| super::helpers::io_error(e.to_string()))?;
         for row in rows {
+            if scanned >= MAX_SCAN_ROWS {
+                return Ok(ScanResult {
+                    rows: out,
+                    cut_short: true,
+                });
+            }
+            scanned += 1;
             let Some(id) = row_id(&row) else {
                 continue;
             };
@@ -213,7 +244,10 @@ async fn scan_owned(
             {
                 out.push(row);
                 if out.len() >= want {
-                    return Ok(out);
+                    return Ok(ScanResult {
+                        rows: out,
+                        cut_short: false,
+                    });
                 }
             }
         }
@@ -222,16 +256,21 @@ async fn scan_owned(
             _ => break,
         }
     }
-    Ok(out)
+    Ok(ScanResult {
+        rows: out,
+        cut_short: false,
+    })
 }
 
-/// Read purposes declared for `schema_name`, as plain sentences. Empty when the host
-/// installed no data-use catalog.
+/// Read purposes declared for `schema_name`, as plain sentences.
+///
+/// # Errors
+///
+/// Returns the catalog lookup's error, including the not-installed error when the
+/// host never installed a data-use catalog.
 #[cfg(feature = "ssr")]
-async fn why_kept(schema_name: &str) -> Vec<String> {
-    let rows = super::data_uses::get_schema_data_uses(schema_name.to_string())
-        .await
-        .unwrap_or_default();
+async fn why_kept(schema_name: &str) -> Result<Vec<String>, ServerFnError> {
+    let rows = super::data_uses::get_schema_data_uses(schema_name.to_string()).await?;
     let mut out: Vec<String> = Vec::new();
     for row in rows {
         if row.op != "read" || row.source_schema.is_some() {
@@ -242,7 +281,7 @@ async fn why_kept(schema_name: &str) -> Vec<String> {
             out.push(sentence);
         }
     }
-    out
+    Ok(out)
 }
 
 /// The session's user id, or `None` for service and system actors.
@@ -283,7 +322,8 @@ pub async fn get_my_data() -> Result<MyData, ServerFnError> {
                 want,
                 valence::use_!(r#"In the **Valence ops console** **Your data** page, we **list the newest records a member owns** in each schema to show a member what Valence holds about them. Only the signed-in member sees their own records."#),
             )
-            .await?;
+            .await?
+            .rows;
             let newest: Vec<MyDataRecord> = rows
                 .iter()
                 .filter_map(|r| {
@@ -298,8 +338,21 @@ pub async fn get_my_data() -> Result<MyData, ServerFnError> {
             let retention = super::registry::get_schema_metadata_by_name(&row.valence_model)
                 .map(|s| s.meta.retention)
                 .unwrap_or_default();
+            let (why_kept, why_kept_failed) = match why_kept(&row.valence_model).await {
+                Ok(lines) => (lines, false),
+                Err(e) => {
+                    tracing::warn!(
+                        target = "valence_app::my_data",
+                        schema = %row.valence_model,
+                        error = %e,
+                        "data-use catalog lookup failed for Your data"
+                    );
+                    (Vec::new(), true)
+                }
+            };
             schemas.push(MyDataSchema {
-                why_kept: why_kept(&row.valence_model).await,
+                why_kept,
+                why_kept_failed,
                 retention: retention_caption(&retention),
                 more: more_count(count, newest.len()),
                 newest,
@@ -341,9 +394,10 @@ pub async fn download_my_data() -> Result<String, ServerFnError> {
             .map_err(|e| super::helpers::io_error(e.to_string()))?;
 
         let mut by_schema = serde_json::Map::new();
+        let mut cut_short: Vec<String> = Vec::new();
         for row in summary.rows_by_schema {
             let count = row.active_rows + row.pending_deletion_rows;
-            let rows = scan_owned(
+            let scan = scan_owned(
                 &v,
                 &row.valence_model,
                 &user_id,
@@ -351,14 +405,25 @@ pub async fn download_my_data() -> Result<String, ServerFnError> {
                 valence::use_!(r#"In the **Valence ops console** **Your data** page, we **read every record a member owns** to give a member a copy of their records as one JSON download. Only the signed-in member gets their own records."#),
             )
             .await?;
-            by_schema.insert(row.valence_model, serde_json::Value::Array(rows));
+            if scan.cut_short {
+                cut_short.push(row.valence_model.clone());
+            }
+            by_schema.insert(row.valence_model, serde_json::Value::Array(scan.rows));
         }
 
-        let doc = serde_json::json!({
+        let mut doc = serde_json::json!({
             "user": user_id,
             "generated_at": chrono::Utc::now().to_rfc3339(),
             "schemas": by_schema,
         });
+        if !cut_short.is_empty() {
+            doc["incomplete"] = serde_json::json!({
+                "schemas": cut_short,
+                "reason": format!(
+                    "Stopped after reading {MAX_SCAN_ROWS} records in each of these schemas; some of your records there may be missing from this file."
+                ),
+            });
+        }
         serde_json::to_string_pretty(&doc).map_err(|e| super::helpers::io_error(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
