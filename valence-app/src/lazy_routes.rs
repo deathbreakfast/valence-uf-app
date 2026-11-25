@@ -5,8 +5,8 @@ use leptos_router::{lazy_route, LazyRoute};
 
 use crate::{
     ValenceDashboardPage, ValenceDeletionIndexPage, ValenceDeletionRunPage, ValenceEntityPage,
-    ValenceIterIndexPage, ValenceIterRunPage, ValenceSchemaIndexPage, ValenceSchemaPage,
-    ValenceTraitDetailPage, ValenceTraitIndexPage, ValenceUnscopedUsesPage,
+    ValenceIterIndexPage, ValenceIterRunPage, ValenceMyDataPage, ValenceSchemaIndexPage,
+    ValenceSchemaPage, ValenceTraitDetailPage, ValenceTraitIndexPage, ValenceUnscopedUsesPage,
 };
 
 /// Prefetch the valence family WASM chunk (leaf pages share split modules).
@@ -26,6 +26,21 @@ impl LazyRoute for ValenceDashboardRoute {
 
     fn view(_this: Self) -> AnyView {
         view! { <ValenceDashboardPage /> }.into_any()
+    }
+}
+
+/// Lazy `/valence/me` (Your data).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ValenceMyDataRoute;
+
+#[lazy_route]
+impl LazyRoute for ValenceMyDataRoute {
+    fn data() -> Self {
+        Self
+    }
+
+    fn view(_this: Self) -> AnyView {
+        view! { <ValenceMyDataPage /> }.into_any()
     }
 }
 

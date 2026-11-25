@@ -28,12 +28,6 @@ const VALENCE_HELP_STEPS_SEEN = [
   },
   {
     route: "/valence",
-    feature_highlight: "valence-dashboard-top-schemas",
-    spotlight: "valence-dashboard-top-schemas",
-    replay: false,
-  },
-  {
-    route: "/valence",
     feature_highlight: "valence-dashboard-active-deletions",
     spotlight: "valence-dashboard-active-deletions",
     replay: false,
@@ -372,6 +366,25 @@ const VALENCE_HELP_STEPS_SEEN = [
     route: "/valence/traits",
     feature_highlight: "valence-traits-open",
     spotlight: "valence-traits-list",
+    replay: false,
+  },
+  { route: "/valence/me", feature_highlight: "valence-my-data-intro", spotlight: null, replay: false },
+  {
+    route: "/valence/me",
+    feature_highlight: "valence-my-data-download",
+    spotlight: "valence-my-data-download",
+    replay: false,
+  },
+  {
+    route: "/valence/me",
+    feature_highlight: "valence-my-data-account",
+    spotlight: "valence-my-data-account",
+    replay: false,
+  },
+  {
+    route: "/valence/me",
+    feature_highlight: "valence-my-data-schemas",
+    spotlight: "valence-my-data-schemas",
     replay: false,
   },
 ] as const;

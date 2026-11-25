@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use orbital::components::{Card, CardContent, Flex, FlexGap, FlexWrap, StatCard};
 
 use crate::components::help::ValenceHelpCardHeader;
-use crate::server::get_dashboard_platform_headline;
+use crate::server::{get_dashboard_platform_headline, is_permission_error};
 
 use super::permission_denied::DashboardPermissionDeniedState;
 use super::skeletons::DashboardKpiSkeleton;
@@ -39,7 +39,7 @@ pub fn DashboardPlatformHeadlineCard(range_secs: Signal<i64>) -> impl IntoView {
                                     }).collect_view()}
                                 </Flex>
                             }.into_any(),
-                            Err(e) if e.to_string().contains("Permission denied") => {
+                            Err(e) if is_permission_error(&e) => {
                                 view! { <DashboardPermissionDeniedState /> }.into_any()
                             }
                             Err(e) => view! {

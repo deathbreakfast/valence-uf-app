@@ -47,6 +47,7 @@ mod data_uses;
 mod deletions;
 mod entities;
 mod iters;
+mod my_data;
 mod schemas;
 mod traits;
 mod types;
@@ -80,9 +81,10 @@ pub use iters::{
     cancel_iter_run, get_iter_run, get_schema_iters, list_iter_run_batches, list_iter_run_errors,
     list_iter_runs, run_iter_on_entity,
 };
+pub use my_data::{download_my_data, get_my_data, MyData, MyDataRecord, MyDataSchema};
 pub use schemas::{
     get_schema, get_schema_privacy_policies, get_schema_samples, get_schemas, get_schemas_page,
-    search_schema_or_id,
+    search_schema_or_id, SearchOutcome,
 };
 pub use traits::{get_trait, get_traits, get_traits_page};
 pub use types::{
@@ -96,16 +98,17 @@ pub use valence_backend::{
 // --- In-crate UI wiring (not part of the host integrator contract) ------------
 
 pub(crate) use dashboard::{
-    get_dashboard_active_deletions, get_dashboard_my_data_top_schemas,
-    get_dashboard_platform_error_offenders, get_dashboard_platform_headline,
-    get_dashboard_platform_reads_breakdown, get_dashboard_platform_throughput,
-    get_dashboard_platform_writes_breakdown, DashboardChartPoint, DashboardChartSeries,
-    DashboardErrorSlice, DashboardPlatformHeadline, DashboardSchemaRowCount, DashboardStatCard,
+    get_dashboard_active_deletions, get_dashboard_platform_error_offenders,
+    get_dashboard_platform_headline, get_dashboard_platform_reads_breakdown,
+    get_dashboard_platform_throughput, get_dashboard_platform_writes_breakdown,
+    is_permission_error, DashboardChartPoint, DashboardChartSeries, DashboardErrorSlice,
+    DashboardPlatformHeadline, DashboardStatCard,
 };
 pub(crate) use deletions::list_deletion_runs_for_schema;
 pub(crate) use iters::{
     evaluate_iter_for_entity, list_recent_iter_runs_for_schema, start_iter_run,
 };
+pub(crate) use my_data::DownloadMyData;
 pub(crate) use schemas::SearchSchemaOrId;
 pub(crate) use types::{
     DeletionRequest, EntityPrivacyEvalCardData, EntityRecord, InverseConnectionData,

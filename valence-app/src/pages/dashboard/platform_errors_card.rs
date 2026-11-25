@@ -32,7 +32,7 @@ pub fn DashboardPlatformErrorsCard(range_secs: Signal<i64>) -> impl IntoView {
                                 <Caption1>"Error count by table"</Caption1>
                                 {bar_chart_from_slices(&slices, 280.0)}
                             }.into_any(),
-                            Err(e) if e.to_string().contains("Permission denied") => {
+                            Err(e) if crate::server::is_permission_error(&e) => {
                                 view! { <DashboardPermissionDeniedState /> }.into_any()
                             }
                             Err(e) => view! {

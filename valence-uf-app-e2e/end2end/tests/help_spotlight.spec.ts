@@ -60,6 +60,17 @@ test.describe("help-spotlight", () => {
     await expect(page.getByTestId("help-step-valence-intro")).toHaveCount(0);
   });
 
+  test("help-spotlight-my-data-green", async ({ page }) => {
+    await seedAuth(page, "admin", { help_tour: true });
+    await page.goto("/valence/me", { waitUntil: "domcontentloaded" });
+    await waitForHydrated(page);
+    await expect(page.getByTestId("help-step-valence-my-data-intro")).toBeVisible({
+      timeout: 60_000,
+    });
+    await completeVisibleTour(page);
+    await expect(page.getByTestId("help-step-valence-my-data-intro")).toHaveCount(0);
+  });
+
   test("help-spotlight-schema-index-green", async ({ page }) => {
     await seedAuth(page, "admin", { help_tour: true });
     await page.goto("/valence/schema", { waitUntil: "domcontentloaded" });

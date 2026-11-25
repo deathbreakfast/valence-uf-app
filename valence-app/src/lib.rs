@@ -14,11 +14,15 @@
 //! ## Features
 //!
 //! - **Valence admin routes** — Provides the nested `/valence` route tree behind auth for
-//!   dashboard, schema, entity, trait, iter, and deletion pages. Mount once when the host
+//!   dashboard, Your data, schema, entity, trait, iter, and deletion pages. Mount once when the host
 //!   router starts. [Get started](#mount-valence-routes)
-//! - **Operator dashboard** — Shows My Data row counts on [`ValenceDashboardPage`] via
-//!   [`get_dashboard_my_data_stats`] plus schema-or-id search from [`search_schema_or_id`].
-//!   [Get started](#operator-dashboard)
+//! - **Operator dashboard** — Shows the viewer's Your data summary on [`ValenceDashboardPage`]
+//!   via [`get_dashboard_my_data_stats`] plus schema-or-id search from [`search_schema_or_id`],
+//!   which answers with a [`SearchOutcome`]. [Get started](#operator-dashboard)
+//! - **Your data** — Lists what Valence holds about the signed-in member by schema on
+//!   [`ValenceMyDataPage`] via [`get_my_data`] (why each kind is kept, retention, newest
+//!   records) and returns a JSON copy from [`download_my_data`], all under the member's
+//!   own session.
 //! - **Schema catalog** — Lists registered schemas and opens detail pages via [`get_schemas`]
 //!   and [`get_schema`]. [Get started](#browse-schemas)
 //! - **Entity inspection** — Shows field rows, privacy evaluation, and ownership transfers
@@ -37,7 +41,7 @@
 //!   [`get_trait_data_uses`], and [`get_unscoped_data_uses`], including Referenced
 //!   Reads / Updates on schema pages when a connection hop lands on that table.
 //!   [Get started](#browse-declared-data-uses)
-//! - **Help spotlight tours** — Route-scoped Help steps for dashboard, schemas, entities,
+//! - **Help spotlight tours** — Route-scoped Help steps for dashboard, Your data, schemas, entities,
 //!   traits, iters, deletions, and Data uses. Call [`ensure_help_steps_linked`] so
 //!   inventory links into the host; enable `offering-help` on the product shell.
 //!   [Get started](#help-spotlight-tours)
@@ -84,7 +88,7 @@
 //! ```rust,ignore
 //! use valence_app::{
 //!     ValenceDashboardPage, get_dashboard_my_data_stats, search_schema_or_id,
-//!     DashboardMyDataStats,
+//!     DashboardMyDataStats, SearchOutcome,
 //! };
 //!
 //! // ValenceDashboardPage calls these on each SSR render / search submit:
@@ -92,12 +96,14 @@
 //! assert_eq!(stats.tables_with_data, 3);
 //! assert_eq!(stats.owned_rows, 12);
 //!
-//! search_schema_or_id("counter".into()).await?;
+//! let outcome: SearchOutcome = search_schema_or_id("counter".into()).await?;
 //! ```
 //!
-//! On success `stats` carries `owned_rows`, `tables_with_data`, and `pending_deletion_rows`;
-//! search redirects to `/valence/schema/{name}` or `/valence/schema/{name}/id/{id}` when the
-//! token resolves. Blank or unknown tokens return without navigation.
+//! On success `stats` carries `owned_rows`, `tables_with_data`, and `pending_deletion_rows`.
+//! Search returns [`SearchOutcome::Redirect`] with `/valence/schema/{name}` or
+//! `/valence/schema/{name}/id/{id}` when the token resolves, [`SearchOutcome::Hidden`] when the
+//! record exists but the viewer can't read it, and [`SearchOutcome::NoMatch`] otherwise; the
+//! dashboard stays put and says so on no match.
 //!
 //! ## Browse schemas
 //!
@@ -330,6 +336,7 @@
 //! | Path | Page | Key server fn(s) |
 //! |---|---|---|
 //! | `/valence` | [`ValenceDashboardPage`] | [`get_dashboard_my_data_stats`], [`search_schema_or_id`] |
+//! | `/valence/me` | [`ValenceMyDataPage`] | [`get_my_data`], [`download_my_data`] |
 //! | `/valence/schema` | [`ValenceSchemaIndexPage`] | [`get_schemas`], [`get_schemas_page`] |
 //! | `/valence/schema/:schema_name` | [`ValenceSchemaPage`] | [`get_schema`], [`get_schema_privacy_policies`], [`get_schema_samples`], [`get_schema_iters`], [`get_schema_data_uses`] |
 //! | `/valence/schema/:schema_name/iter/:run_id` | [`ValenceIterRunPage`] | [`get_iter_run`], [`list_iter_run_errors`], [`list_iter_run_batches`], [`cancel_iter_run`] |
@@ -397,24 +404,26 @@ pub use help_steps::ensure_help_steps_linked;
 pub use layout::ValenceLayout;
 pub use lazy_routes::{
     prefetch_family, ValenceDashboardRoute, ValenceDeletionIndexRoute, ValenceDeletionRunRoute,
-    ValenceEntityRoute, ValenceIterIndexRoute, ValenceIterRunRoute, ValenceSchemaIndexRoute,
-    ValenceSchemaRoute, ValenceTraitDetailRoute, ValenceTraitIndexRoute, ValenceUnscopedUsesRoute,
+    ValenceEntityRoute, ValenceIterIndexRoute, ValenceIterRunRoute, ValenceMyDataRoute,
+    ValenceSchemaIndexRoute, ValenceSchemaRoute, ValenceTraitDetailRoute, ValenceTraitIndexRoute,
+    ValenceUnscopedUsesRoute,
 };
 pub use pages::{
     ValenceDashboardPage, ValenceDeletionIndexPage, ValenceDeletionRunPage, ValenceEntityPage,
-    ValenceIterIndexPage, ValenceIterRunPage, ValenceSchemaIndexPage, ValenceSchemaPage,
-    ValenceTraitDetailPage, ValenceTraitIndexPage, ValenceUnscopedUsesPage,
+    ValenceIterIndexPage, ValenceIterRunPage, ValenceMyDataPage, ValenceSchemaIndexPage,
+    ValenceSchemaPage, ValenceTraitDetailPage, ValenceTraitIndexPage, ValenceUnscopedUsesPage,
 };
 pub use server::{
-    cancel_deletion_run, cancel_iter_run, delete_entity_queue, get_dashboard_my_data_stats,
-    get_deletion_run, get_entity_ownership_transfers, get_entity_privacy_evaluation,
-    get_entity_view, get_iter_run, get_schema, get_schema_data_uses, get_schema_iters,
-    get_schema_privacy_policies, get_schema_samples, get_schemas, get_schemas_page, get_trait,
-    get_trait_data_uses, get_traits, get_traits_page, get_unscoped_data_uses,
-    list_deletion_run_steps, list_deletion_runs, list_iter_run_batches, list_iter_run_errors,
-    list_iter_runs, run_iter_on_entity, search_schema_or_id, DashboardMyDataStats, DataUseRow,
-    DeletionRunView, EntityView, ForeignKeyRef, IterRunSummary, Schema, SchemaEdge, SchemaField,
-    SchemaListItem, SchemaMeta, SchemaPrivacy, TraitDetail, TraitFieldInfo, TraitListItem,
+    cancel_deletion_run, cancel_iter_run, delete_entity_queue, download_my_data,
+    get_dashboard_my_data_stats, get_deletion_run, get_entity_ownership_transfers,
+    get_entity_privacy_evaluation, get_entity_view, get_iter_run, get_my_data, get_schema,
+    get_schema_data_uses, get_schema_iters, get_schema_privacy_policies, get_schema_samples,
+    get_schemas, get_schemas_page, get_trait, get_trait_data_uses, get_traits, get_traits_page,
+    get_unscoped_data_uses, list_deletion_run_steps, list_deletion_runs, list_iter_run_batches,
+    list_iter_run_errors, list_iter_runs, run_iter_on_entity, search_schema_or_id,
+    DashboardMyDataStats, DataUseRow, DeletionRunView, EntityView, ForeignKeyRef, IterRunSummary,
+    MyData, MyDataRecord, MyDataSchema, Schema, SchemaEdge, SchemaField, SchemaListItem,
+    SchemaMeta, SchemaPrivacy, SearchOutcome, TraitDetail, TraitFieldInfo, TraitListItem,
     DATA_USE_CATALOG_NOT_INSTALLED, VALENCE_ADMIN_PERMISSION,
 };
 
@@ -480,6 +489,7 @@ pub fn ValenceRoutes() -> impl leptos_router::MatchNestedRoutes + Clone {
     view! {
         <ParentRoute path=path!("valence") view=ValenceLayout>
             <Route path=path!("") view={Lazy::<ValenceDashboardRoute>::new()} />
+            <Route path=path!("me") view={Lazy::<ValenceMyDataRoute>::new()} />
             <Route path=path!("schemas") view=move || view! { <Redirect path=crate::paths::SCHEMA /> } />
             // Register `schema/:…` before static `schema` so matchers never prefer the index
             // for paths like `/valence/schema/counter`.

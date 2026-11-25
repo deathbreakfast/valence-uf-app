@@ -10,6 +10,14 @@ use super::fetcher::{build_schema_fetcher, SCHEMA_TABLE_PAGE_SIZE};
 pub fn SchemaDataTable(initial_quick_search: Memo<String>) -> impl IntoView {
     let navigate = use_navigate();
     let handle = RwSignal::new(None::<DataTableHandle>);
+    // "No schemas registered." only when the host really has none; a filtered-empty
+    // table says nothing matched instead.
+    let host_has_schemas = LocalResource::new(|| async {
+        crate::server::get_schemas()
+            .await
+            .map(|all| !all.is_empty())
+            .unwrap_or(true)
+    });
 
     let on_row_click = Callback::new(move |(id,): (String,)| {
         let _ = navigate(
@@ -82,7 +90,11 @@ pub fn SchemaDataTable(initial_quick_search: Memo<String>) -> impl IntoView {
             >
                 <DataTableEmptyView slot>
                     <MessageBar intent=MessageBarIntent::Info>
-                        "No schemas registered."
+                        {move || if host_has_schemas.get().unwrap_or(true) {
+                            "No schemas match this search."
+                        } else {
+                            "No schemas registered."
+                        }}
                     </MessageBar>
                 </DataTableEmptyView>
             </DataTable>

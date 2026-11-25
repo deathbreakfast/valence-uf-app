@@ -50,6 +50,7 @@ fn valence_routes_mount_happy_path() {
     for needle in [
         r#"path!("valence")"#,
         r#"path!("")"#,
+        r#"path!("me")"#,
         r#"path!("schema")"#,
         r#"path!("schema/:schema_name")"#,
         r#"path!("schema/:schema_name/id/:entity_id")"#,
@@ -115,6 +116,7 @@ fn layout_auth_gate_and_nav_happy_path() {
         "RequireAuthenticated",
         "Outlet",
         "nav-dashboard",
+        "nav-my-data",
         "nav-schemas",
         "nav-traits",
         "nav-iters",

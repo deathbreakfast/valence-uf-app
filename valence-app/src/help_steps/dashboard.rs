@@ -41,17 +41,17 @@ pub fn ValenceIntroHelp() -> impl IntoView {
 pub fn ValenceDashboardSearchHelp() -> impl IntoView {
     help_stack(
         "help-step-valence-dashboard-search",
-        "Type a schema name to open its detail page, or paste a schema plus record id to land on one row.",
-        Some("If the token does not match anything, the page stays put — try a shorter name."),
+        "Type a schema name to open it, or paste a record id (or schema:id) to open that record.",
+        Some("When nothing matches you stay here with a note, and a link to Deletions in case the record was removed."),
         &[],
     )
 }
 
-/// My Data stats card.
+/// Your data summary card.
 #[help_spotlight_step(
     route = "/valence",
     feature_highlight = "valence-dashboard-my-data",
-    title = "Your data footprint",
+    title = "Your data",
     spotlight = "valence-dashboard-my-data",
     position = "bottom",
     order = 30
@@ -60,31 +60,8 @@ pub fn ValenceDashboardSearchHelp() -> impl IntoView {
 pub fn ValenceDashboardMyDataHelp() -> impl IntoView {
     help_stack(
         "help-step-valence-dashboard-my-data",
-        "These counts summarize what you own in Valence right now.",
-        None,
-        &[
-            "Owned rows: records where you are the owner",
-            "Tables with data: schemas that have at least one row",
-            "Pending deletion: rows queued for cascade removal",
-        ],
-    )
-}
-
-/// Top schemas by row count.
-#[help_spotlight_step(
-    route = "/valence",
-    feature_highlight = "valence-dashboard-top-schemas",
-    title = "Your busiest schemas",
-    spotlight = "valence-dashboard-top-schemas",
-    position = "top",
-    order = 40
-)]
-#[component]
-pub fn ValenceDashboardTopSchemasHelp() -> impl IntoView {
-    help_stack(
-        "help-step-valence-dashboard-top-schemas",
-        "This list ranks schemas by how many rows you own. Open a row to inspect fields, privacy, and sample records on the schema page.",
-        Some("Use it to spot where most of your data lives."),
+        "Open your data to see each kind of record you own, why the site keeps it, and to download a copy.",
+        Some("Records being deleted still count until Valence finishes removing them."),
         &[],
     )
 }
@@ -102,8 +79,8 @@ pub fn ValenceDashboardTopSchemasHelp() -> impl IntoView {
 pub fn ValenceDashboardActiveDeletionsHelp() -> impl IntoView {
     help_stack(
         "help-step-valence-dashboard-active-deletions",
-        "When someone queues a cascade delete, the run appears here while it is still working.",
-        Some("Click a row to watch step-by-step progress or cancel an in-flight run."),
+        "Counts the deletion runs you started that are still working.",
+        Some("Open Deletions to follow a run step by step or cancel it."),
         &[],
     )
 }
@@ -238,7 +215,7 @@ pub fn ValenceDashboardErrorsHelp() -> impl IntoView {
 pub fn ValenceNavHelp() -> impl IntoView {
     help_stack(
         "help-step-valence-nav",
-        "Use the left menu to open Dashboard for a health overview, Schemas for the catalog, Traits for shared field bundles, Iters for batch jobs, and Deletions for cascade runs.",
+        "Use the left menu to open Your data for what you own, Schemas for the catalog, Traits for shared field bundles, Iters for batch jobs, and Deletions for cascade runs.",
         Some("Help → Replay restarts this page's tour."),
         &[],
     )

@@ -203,23 +203,31 @@ pub async fn get_schema_samples(
     }
 }
 
-/// Paginated traits endpoint.
-///
-/// Returns a [`Page<TraitListItem>`] using the standard `orbital-paging`
-/// over-fetch pattern. Quick search and structured filters from
+/// Where a dashboard search lands.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SearchOutcome {
+    /// Open this path: a schema page or a readable record.
+    Redirect(String),
+    /// No schema has that name and no record has that id.
+    NoMatch,
+    /// The record exists but the viewer can't read it; the entity page shows its
+    /// hidden state.
+    Hidden(String),
+}
 
+/// Resolves a dashboard search token to a schema page, a record, or no match.
+///
+/// Matches a schema name (case-insensitive), then `schema:id`, then a bare id across
+/// every schema, all under the viewer's session.
 #[uf_product_macros::server]
 #[server(SearchSchemaOrId)]
-pub async fn search_schema_or_id(query: String) -> Result<(), ServerFnError> {
-    use leptos_axum::redirect;
-    use urlencoding::encode;
+pub async fn search_schema_or_id(query: String) -> Result<SearchOutcome, ServerFnError> {
     use valence::query::QueryCore;
 
     let query = query.trim();
 
     if query.is_empty() {
-        redirect(crate::paths::SCHEMA);
-        return Ok(());
+        return Ok(SearchOutcome::NoMatch);
     }
 
     super::helpers::require_authenticated_session().await?;
@@ -230,8 +238,9 @@ pub async fn search_schema_or_id(query: String) -> Result<(), ServerFnError> {
     let schema_names = registry.list_schemas();
     for schema_name in &schema_names {
         if schema_name.eq_ignore_ascii_case(query) {
-            redirect(&valence_backend::valence_schema_path(schema_name));
-            return Ok(());
+            return Ok(SearchOutcome::Redirect(
+                valence_backend::valence_schema_path(schema_name),
+            ));
         }
     }
 
@@ -243,6 +252,7 @@ pub async fn search_schema_or_id(query: String) -> Result<(), ServerFnError> {
         if let Some(ui_schema) = get_schema_metadata_by_name(schema_input) {
             let table_key = ui_schema.name.as_str();
             let v = super::helpers::viewer_valence().await?;
+            let path = valence_backend::valence_entity_path(table_key, entity_id);
 
             if let Ok(Some(_record)) = QueryCore::get_entity(
                 table_key,
@@ -252,8 +262,17 @@ pub async fn search_schema_or_id(query: String) -> Result<(), ServerFnError> {
             )
             .await
             {
-                redirect(&valence_backend::valence_entity_path(table_key, entity_id));
-                return Ok(());
+                return Ok(SearchOutcome::Redirect(path));
+            }
+            if let Ok(Some(_id)) = QueryCore::get_id_only(
+                table_key,
+                entity_id,
+                &v,
+                valence::use_!(r#"In the **Valence ops console**, when an operator **searches** with a schema:id they can't read, we **check that the id exists** so the console opens the record's hidden state instead of saying nothing matched. Authenticated operators see only that the record exists."#),
+            )
+            .await
+            {
+                return Ok(SearchOutcome::Hidden(path));
             }
         }
     } else {
@@ -269,15 +288,30 @@ pub async fn search_schema_or_id(query: String) -> Result<(), ServerFnError> {
             )
             .await
             {
-                redirect(&valence_backend::valence_entity_path(schema_name, query));
-                return Ok(());
+                return Ok(SearchOutcome::Redirect(valence_backend::valence_entity_path(
+                    schema_name,
+                    query,
+                )));
+            }
+        }
+        for schema_name in schema_names.iter().copied() {
+            if let Ok(Some(_id)) = QueryCore::get_id_only(
+                schema_name,
+                query,
+                &v,
+                valence::use_!(r#"In the **Valence ops console**, when an operator **searches** by an id they can't read, we **check which schema holds that id** so the console opens the record's hidden state instead of saying nothing matched. Authenticated operators see only that the record exists."#),
+            )
+            .await
+            {
+                return Ok(SearchOutcome::Hidden(valence_backend::valence_entity_path(
+                    schema_name,
+                    query,
+                )));
             }
         }
     }
 
-    // No matches found - redirect to schema index with query prefilled
-    redirect(&format!("{}?q={}", crate::paths::SCHEMA, encode(query)));
-    Ok(())
+    Ok(SearchOutcome::NoMatch)
 }
 
 // --- Valence Iter (Milestone 12) -------------------------------------------------
