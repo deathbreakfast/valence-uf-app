@@ -32,7 +32,7 @@ pub fn DashboardPlatformThroughputCard(range_secs: Signal<i64>) -> impl IntoView
                                 <Caption1>"Operations per second"</Caption1>
                                 {line_chart_from_series(&series, 280.0)}
                             }.into_any(),
-                            Err(e) if e.to_string().contains("Permission denied") => {
+                            Err(e) if crate::server::is_permission_error(&e) => {
                                 view! { <DashboardPermissionDeniedState /> }.into_any()
                             }
                             Err(e) => view! {

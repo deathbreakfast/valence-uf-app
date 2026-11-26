@@ -1,7 +1,6 @@
 mod charts;
+mod my_data_card;
 mod my_data_deletions_card;
-mod my_data_schemas_card;
-mod my_data_stats_card;
 mod permission_denied;
 mod platform_errors_card;
 mod platform_headline_card;
@@ -15,9 +14,8 @@ use leptos::prelude::*;
 use orbital::components::{AutoGrid, ContentContainer, Flex, SpacingSize, Subtitle2};
 
 use charts::DashboardPlatformToolbar;
+use my_data_card::DashboardMyDataCard;
 use my_data_deletions_card::DashboardMyDataDeletionsCard;
-use my_data_schemas_card::DashboardMyDataSchemasCard;
-use my_data_stats_card::DashboardMyDataStatsCard;
 use platform_errors_card::DashboardPlatformErrorsCard;
 use platform_headline_card::DashboardPlatformHeadlineCard;
 use platform_reads_card::DashboardPlatformReadsCard;
@@ -35,10 +33,8 @@ pub fn ValenceDashboardPage() -> impl IntoView {
             <Flex vertical=true gap=SpacingSize::Size240.flex_gap()>
                 <DashboardSearchHeader />
 
-                <Subtitle2>"My Data"</Subtitle2>
                 <AutoGrid min="280px" gap=SpacingSize::Size160>
-                    <DashboardMyDataStatsCard />
-                    <DashboardMyDataSchemasCard />
+                    <DashboardMyDataCard />
                     <DashboardMyDataDeletionsCard />
                 </AutoGrid>
 

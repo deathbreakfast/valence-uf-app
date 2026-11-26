@@ -13,7 +13,7 @@ use valence_platform::deletion::run_service::DeletionService;
 use valence_platform::{ValenceIterRun, ValenceIterRunStatus};
 use valence_uf_app_e2e::{
     e2e_admin_valence, e2e_fixtures, e2e_outsider_valence, e2e_system_valence, init_e2e_valence,
-    E2E_ITER_NAME, E2E_SCHEMA_NAME,
+    E2E_ITER_NAME, E2E_MY_NOTE_IDS, E2E_SCHEMA_NAME,
 };
 
 #[tokio::test]
@@ -219,4 +219,56 @@ async fn cancel_deletion_run_merge_happy_path() {
 async fn system_valence_builds_happy_path() {
     init_e2e_valence().await;
     let _ = e2e_system_valence();
+}
+
+/// Your data reads `e2e_note` rows under admin's session and keeps those whose
+/// ownership row names admin; both halves must see the fixture rows, and another
+/// member must see none of them.
+#[tokio::test]
+async fn admin_owned_note_rows_visible_only_to_admin_happy_path() {
+    use valence::ownership::OwnershipService;
+    use valence::query::{QueryCore, SortDirection};
+
+    init_e2e_valence().await;
+    let query = |v: valence::Valence| async move {
+        QueryCore::new("e2e_note".to_string())
+            .order_by("id".to_string(), SortDirection::Desc)
+            .limit(100)
+            .execute::<serde_json::Value>(
+                &v,
+                valence::use_!(r#"**Test:** Fixture **E2E note** read in `runtime_contract` so the suite can assert the Your data scan sees owned rows. CI and developers running the suite only."#),
+            )
+            .await
+            .expect("query e2e_note")
+    };
+    let rows = query(e2e_admin_valence()).await;
+    let ids: Vec<String> = rows
+        .iter()
+        .map(|r| r.get("id").map(ToString::to_string).unwrap_or_default())
+        .collect();
+    for want in E2E_MY_NOTE_IDS {
+        assert!(
+            ids.iter().any(|id| id.contains(want)),
+            "admin should read e2e_note `{want}`; rows: {rows:?}"
+        );
+        let ownership =
+            OwnershipService::get_ownership_json("e2e_note", want, &e2e_admin_valence())
+                .await
+                .expect("ownership lookup");
+        let owner = ownership
+            .as_ref()
+            .and_then(|o| o.get("owner_id"))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        assert!(
+            owner.trim_start_matches("user:") == "admin",
+            "ownership for `{want}` should name admin; got {ownership:?}"
+        );
+    }
+    let outsider_rows = query(e2e_outsider_valence()).await;
+    assert!(
+        outsider_rows.is_empty(),
+        "outsider must not read admin's notes; got {outsider_rows:?}"
+    );
 }

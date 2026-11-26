@@ -12,8 +12,9 @@ use leptos_router::{
 };
 use valence_app::{
     ValenceDashboardPage, ValenceDeletionIndexPage, ValenceDeletionRunPage, ValenceEntityPage,
-    ValenceIterIndexPage, ValenceIterRunPage, ValenceLayout, ValenceSchemaIndexPage,
-    ValenceSchemaPage, ValenceTraitDetailPage, ValenceTraitIndexPage, ValenceUnscopedUsesPage,
+    ValenceIterIndexPage, ValenceIterRunPage, ValenceLayout, ValenceMyDataPage,
+    ValenceSchemaIndexPage, ValenceSchemaPage, ValenceTraitDetailPage, ValenceTraitIndexPage,
+    ValenceUnscopedUsesPage,
 };
 
 /// Same paths as [`valence_app::ValenceRoutes`], without Lazy route views.
@@ -22,6 +23,7 @@ pub fn ValenceRoutesEager() -> impl leptos_router::MatchNestedRoutes + Clone {
     view! {
         <ParentRoute path=path!("valence") view=ValenceLayout>
             <Route path=path!("") view=ValenceDashboardPage />
+            <Route path=path!("me") view=ValenceMyDataPage />
             <Route path=path!("schema/:schema_name") view=ValenceSchemaPage />
             <Route path=path!("schema/:schema_name/iter/:run_id") view=ValenceIterRunPage />
             <Route path=path!("schema/:schema_name/deletion/:run_id") view=ValenceDeletionRunPage />

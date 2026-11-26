@@ -33,13 +33,6 @@ pub struct DashboardMyDataStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub(crate) struct DashboardSchemaRowCount {
-    pub valence_model: String,
-    pub active_rows: u64,
-    pub pending_deletion_rows: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub(crate) struct DashboardStatCard {
     pub label: String,
     pub value: String,
@@ -67,6 +60,19 @@ pub(crate) struct DashboardPlatformHeadline {
 pub(crate) struct DashboardErrorSlice {
     pub label: String,
     pub value: f64,
+}
+
+/// `true` when `err` is a permission denial (Gauge or Spectra).
+///
+/// Server fns here write denials with the stable `permission:` kind prefix
+/// (`helpers::permission_error`), so the cards read the kind instead of matching
+/// message wording.
+pub(crate) fn is_permission_error(err: &ServerFnError) -> bool {
+    let message = match err {
+        ServerFnError::ServerError(m) => m.as_str(),
+        _ => return false,
+    };
+    message.trim_start().starts_with("permission:")
 }
 
 // ---------------------------------------------------------------------------
@@ -271,34 +277,6 @@ pub async fn get_dashboard_my_data_stats() -> Result<DashboardMyDataStats, Serve
 }
 
 #[uf_product_macros::server]
-pub(crate) async fn get_dashboard_my_data_top_schemas(
-) -> Result<Vec<DashboardSchemaRowCount>, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let v = viewer_valence().await?;
-        let actor = v.actor();
-        if !matches!(actor, Actor::User { .. }) {
-            return Ok(Vec::new());
-        }
-        let summary = fetch_owner_data_summary(&v).await?;
-        Ok(summary
-            .rows_by_schema
-            .into_iter()
-            .take(5)
-            .map(|r| DashboardSchemaRowCount {
-                valence_model: r.valence_model,
-                active_rows: r.active_rows,
-                pending_deletion_rows: r.pending_deletion_rows,
-            })
-            .collect())
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("SSR only")
-    }
-}
-
-#[uf_product_macros::server]
 pub(crate) async fn get_dashboard_active_deletions() -> Result<u64, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
@@ -451,5 +429,27 @@ pub(crate) async fn get_dashboard_platform_error_offenders(
     {
         let _ = range_secs;
         unreachable!("SSR only")
+    }
+}
+
+#[cfg(test)]
+mod permission_kind_tests {
+    use super::is_permission_error;
+    use leptos::prelude::ServerFnError;
+
+    #[test]
+    fn permission_prefix_is_a_permission_error() {
+        let err = ServerFnError::new("permission: `spectra.query.valence_db_reads` is required");
+        assert!(is_permission_error(&err));
+    }
+
+    #[test]
+    fn other_kinds_and_wording_are_not() {
+        assert!(!is_permission_error(&ServerFnError::new(
+            "io: Permission denied while reading"
+        )));
+        assert!(!is_permission_error(&ServerFnError::new(
+            "auth: Authentication required"
+        )));
     }
 }

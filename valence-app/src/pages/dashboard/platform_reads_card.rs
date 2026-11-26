@@ -35,7 +35,7 @@ pub fn DashboardPlatformReadsCard(
                                 <Caption1>"Reads / sec by dimension"</Caption1>
                                 {area_chart_from_series(&series, "reads", 280.0)}
                             }.into_any(),
-                            Err(e) if e.to_string().contains("Permission denied") => {
+                            Err(e) if crate::server::is_permission_error(&e) => {
                                 view! { <DashboardPermissionDeniedState /> }.into_any()
                             }
                             Err(e) => view! {
